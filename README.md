@@ -53,11 +53,11 @@ A **two-stage residual inclusion (2SRI)** approach for Cox models that incorpora
 ---
 
 ### 3) TSRI-F with a change-point effect
-An extension of TSRI-F allowing a **piecewise-constant** (change-point) treatment effect, i.e., early vs late effect ([Martínez-Camblor et al. 2019](https://rss.onlinelibrary.wiley.com/doi/abs/10.1111/rssc.12341))).
+An extension of TSRI-F allowing a **piecewise-constant** (change-point) treatment effect, i.e., early vs late effect ([Martínez-Camblor et al. 2019](https://rss.onlinelibrary.wiley.com/doi/abs/10.1111/rssc.12341)).
 
 - **Estimate:** early and late conditional log hazard ratio (before and after a prespecified change point).
 - **Use when:** a baseline IV, a numeric/binary baseline treatment, and believes treatment effect is distinct between early and late follow-up period.
-- 
+  
 **Main function:** `coxiv_tsrif(..., tvareff = TRUE, tchange = t_c)`.
 
 ---
