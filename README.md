@@ -32,7 +32,7 @@ Below are the **four major IV approaches** provided in this package.
 
 ### 1) Cox IV via orthogonality method-of-moments (Cox OMOM)
 
-An IV estimator for the Cox proportional hazards model based on self-orthogonality of IV relative to unmeasured confounder to construct MOM-stype estimating equations. [MacKenzie et al. 2014](https://link.springer.com/article/10.1007/s10742-014-0117-x).
+An IV estimator for the Cox proportional hazards model based on self-orthogonality of IV relative to unmeasured confounder to construct MOM-stype estimating equations ([MacKenzie et al. 2014](https://link.springer.com/article/10.1007/s10742-014-0117-x)).
 
 - **Estimate:** marginal log hazard ratio
 - **Use when:** one has a baseline IV, a numeric/binary baseline treatment, and want a marginal hazard ratio estimand from Cox model.
@@ -43,7 +43,7 @@ An IV estimator for the Cox proportional hazards model based on self-orthogonali
 
 ### 2) Two-stage residual inclusion with frailty (TSRI-F)
 
-A **two-stage residual inclusion (2SRI)** approach for Cox models that incorporates an **individual frailty term** to absorb unobserved heterogeneity and estimation noise.
+A **two-stage residual inclusion (2SRI)** approach for Cox models that incorporates an **individual frailty term** to absorb unobserved heterogeneity and estimation noise ([Martínez-Camblor et al. 2019](https://link.springer.com/article/10.1007/s10742-014-0117-x](https://academic.oup.com/biostatistics/article-abstract/20/1/80/4753665?redirectedFrom=fulltext&login=false))).
 
 - **Estimate:** conditional log hazard ratio
 - **Use when:** one has a baseline IV, a numeric/binary baseline treatment, and assume a __constant treatment effect__ over time.
@@ -53,7 +53,7 @@ A **two-stage residual inclusion (2SRI)** approach for Cox models that incorpora
 ---
 
 ### 3) TSRI-F with a change-point effect
-An extension of TSRI-F allowing a **piecewise-constant** (change-point) treatment effect, i.e., early vs late effect.
+An extension of TSRI-F allowing a **piecewise-constant** (change-point) treatment effect, i.e., early vs late effect ([Martínez-Camblor et al. 2019](https://rss.onlinelibrary.wiley.com/doi/abs/10.1111/rssc.12341))).
 
 - **Estimate:** early and late conditional log hazard ratio (before and after a prespecified change point).
 - **Use when:** a baseline IV, a numeric/binary baseline treatment, and believes treatment effect is distinct between early and late follow-up period.
