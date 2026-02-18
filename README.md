@@ -1,6 +1,6 @@
 
 
-# **{PACKAGE}**: Instrumental variable methods for survival analysis
+# **surviv**: Instrumental variable methods for survival analysis
 
 Causal inference for **time-to-event outcomes** under **unmeasured confounding**, with a focus on IV-based Cox model estimators and longitudinal/sequential trial emulation.
 
