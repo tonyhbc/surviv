@@ -26,3 +26,5 @@ Suggests:
     rmarkdown
 Roxygen: list(markdown = TRUE)
 VignetteBuilder: knitr
+URL: https://github.com/tonyhbc/surviv
+BugReports: https://github.com/tonyhbc/surviv/issues
