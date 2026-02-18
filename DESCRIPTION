@@ -1,0 +1,28 @@
+Package: surviv
+Type: Package
+Title: Flexible Instrumental Variable Methods for Survival Analysis
+Version: 0.0.0.9000
+Authors@R: c(
+    person("Haobin", "Chen", email = "a.a@somewhere.edu", role = c("aut", "cre")),
+    person("James", "O'Malley", role = "aut"),
+    person("Pablo", "Martinez-Camblor", role = "aut"), 
+    person("Todd", "MacKenzie", role = "aut")
+    )
+Description: This package will help you do causal inference using Cox proportional hazards model.
+License: MIT + file LICENSE
+Imports: 
+    dplyr,
+    MASS,
+    ggplot2,
+    survival (>= 3.4-0),
+    rootSolve,
+    survminer,
+    timereg
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.2.3
+Suggests: 
+    knitr,
+    rmarkdown
+Roxygen: list(markdown = TRUE)
+VignetteBuilder: knitr
