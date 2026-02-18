@@ -69,7 +69,7 @@ A **sequential target trial emulation** (STE) approach for treatment initiation 
 - **Estimate:** conditional log hazard ratio (possible to distinguish by treatment start time)
 - **Use when:** one has a time-dependent binary treatment that is monotonic (once initiate, always sustain), confounders collected at baseline, a baseline valid IV, and possibly a treatment effect that changes depend on initiation time.
   
-**Main workflow (typical):** `seqem()` → `coxiv_seq()` *(replace if your function names differ)*
+**Main workflow (typical):** first produce the sequential trials emulation object with `seqem()` →  feed into sequential IV estimator `coxiv_seq()`.
 
 ---
 
