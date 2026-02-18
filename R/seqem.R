@@ -33,6 +33,7 @@
 #'   `covs`, `seqem()` creates `v.base` representing the value of `v` at
 #'   the start of each emulated trial for each individual. A baseline version
 #'   of `tvtrt` is always created as `tvtrt.base`.
+#' @param coarsen Optional character to coarsen the time scale.
 #'
 #' @return An object of class `"seqem"` with components:
 #' \itemize{
