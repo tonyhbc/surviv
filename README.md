@@ -30,132 +30,80 @@ This package collects several **IV estimators for Cox-type survival models**, sp
 
 Below are the **four major IV approaches** provided in this package.
 
-### 1) Cox IV via orthogonality / method-of-moments (OMOM)
+### 1) Cox IV via orthogonality method-of-moments (Cox OMOM)
 
-An IV estimator for the Cox proportional hazards model based on **orthogonality conditions / method-of-moments** ideas (e.g., MacKenzie and related work).
+An IV estimator for the Cox proportional hazards model based on self-orthogonality of IV relative to unmeasured confounder to construct MOM-stype estimating equations. [MacKenzie et al. 2014](https://link.springer.com/article/10.1007/s10742-014-0117-x).
 
-- **Target:** log hazard ratio (Cox PH scale)
-- **Use when:** you have a valid IV and want a Cox-model effect without explicitly modeling frailty
-
-**Main function:** `coxiv_omom()` *(replace with your actual function name if different)*
-
----
-
-### 2) Two-stage residual inclusion with frailty (TSRI-F), constant treatment effect
-
-A **two-stage residual inclusion (2SRI)** approach for Cox models that incorporates an **individual frailty term** to represent unmeasured confounding.
-
-- **Target:** constant log hazard ratio
-- **Use when:** unmeasured confounding induces subject-level heterogeneity well captured by frailty
-
-**Main function:** `coxiv_tsrif(..., tvareff = FALSE)` *(or equivalent in your API)*
+- **Estimate:** marginal log hazard ratio
+- **Use when:** one has a baseline IV, a numeric/binary baseline treatment, and want a marginal hazard ratio estimand from Cox model.
+  
+**Main function:** `coxiv_omom()`.
 
 ---
 
-### 3) TSRI-F with a time-varying (piecewise) treatment effect
+### 2) Two-stage residual inclusion with frailty (TSRI-F)
 
-An extension of TSRI-F allowing a **piecewise-constant** (change-point) treatment effect, e.g., early vs late effect.
+A **two-stage residual inclusion (2SRI)** approach for Cox models that incorporates an **individual frailty term** to absorb unobserved heterogeneity and estimation noise.
 
-- **Target:** two log hazard ratios before/after a prespecified change time
-- **Use when:** treatment effects plausibly differ over time (early/late effect)
+- **Estimate:** conditional log hazard ratio
+- **Use when:** one has a baseline IV, a numeric/binary baseline treatment, and assume a __constant treatment effect__ over time.
 
-**Main function:** `coxiv_tsrif(..., tvareff = TRUE, tchange = ...)` *(or equivalent in your API)*
+**Main function:** `coxiv_tsrif(..., tvareff = FALSE)`.
+  
+---
+
+### 3) TSRI-F with a change-point effect
+An extension of TSRI-F allowing a **piecewise-constant** (change-point) treatment effect, i.e., early vs late effect.
+
+- **Estimate:** early and late conditional log hazard ratio (before and after a prespecified change point).
+- **Use when:** a baseline IV, a numeric/binary baseline treatment, and believes treatment effect is distinct between early and late follow-up period.
+- 
+**Main function:** `coxiv_tsrif(..., tvareff = TRUE, tchange = t_c)`.
 
 ---
 
-### 4) Sequential 2SRI Cox (Seq-2SRI) for longitudinal observational data
+### 4) Sequential 2SRI Cox (Seq-2SRI) for longitudinal follow-up data
 
-A **sequential trial emulation** approach for treatment initiation over follow-up, combined with a **2SRI-style control-function** adjustment. This leverages repeated eligibility/landmarking to estimate a causal effect using stacked “emulated trials”.
+A **sequential target trial emulation** (STE) approach for treatment initiation over follow-up, combined with a **2SRI control-function** adjustment. This leverages repeated eligibility/landmarking to estimate a treatment effect using stacked “emulated trials” for a time-dependent binary treatment that might initiate any time during follow-up.
 
-- **Target:** causal log hazard ratio under a target-trial style estimand
-- **Use when:** treatment can be initiated during follow-up and you want a sequential/landmark-style analysis
-
+- **Estimate:** conditional log hazard ratio (possible to distinguish by treatment start time)
+- **Use when:** one has a time-dependent binary treatment that is monotonic (once initiate, always sustain), confounders collected at baseline, a baseline valid IV, and possibly a treatment effect that changes depend on initiation time.
+  
 **Main workflow (typical):** `seqem()` → `coxiv_seq()` *(replace if your function names differ)*
 
 ---
 
 ## Methods at a glance
 
-| Method                 | Handles unmeasured confounding via      |        Time-varying treatment effect | Longitudinal / sequential design | Main entry point                    |
-| ---------------------- | --------------------------------------- | -----------------------------------: | -------------------------------: | ----------------------------------- |
-| OMOM Cox IV            | orthogonality / moments                 | optional (depends on implementation) |                                ✗ | `coxiv_omom()`                      |
-| TSRI-F Cox (constant)  | residual inclusion + frailty            |                                    ✗ |                                ✗ | `coxiv_tsrif(..., tvareff = FALSE)` |
-| TSRI-F Cox (piecewise) | residual inclusion + frailty            |                                    ✓ |                                ✗ | `coxiv_tsrif(..., tvareff = TRUE)`  |
-| Seq-2SRI Cox           | sequential emulation + control-function | optional (depends on implementation) |                                ✓ | `seqem()` / `coxiv_seq()`           |
+| Method                    | Handles unmeasured confounding via       |        Time-varying treatment effect |              Longitudinal design |     Function call                   |
+| ----------------------    | ---------------------------------------  | -----------------------------------: | -------------------------------: | ----------------------------------- |
+| Cox OMOM                  | orthogonality / moments                  |                                    ✗ |                                ✗ | `coxiv_omom()`                      |
+| TSRI-F Cox (constant)     | residual inclusion + frailty             |                                    ✗ |                                ✗ | `coxiv_tsrif(..., tvareff = FALSE)` |
+| TSRI-F Cox (change-point) | residual inclusion + frailty             |                                    ✓ |                                ✗ | `coxiv_tsrif(..., tvareff = TRUE)`  |
+| Seq-2SRI Cox              | sequential emulation + residual inclusion| optional (depends on implementation) |                                ✓ | `seqem()` / `coxiv_seq()`           |
 
 ---
 
-## Quick start (minimal skeleton)
+## Example data
 
-> These are intentionally minimal “shapes” of calls—see package documentation/vignettes for fully runnable examples.
+The package includes two example datasets: `VitD` and `vascular` for demonstration purpose.
 
-### TSRI-F Cox
+**VitD**: VitD intake and mortality study.
+- *Type:* longitudinal cohort / registry-style survival data (start–stop or visit-based format)
+- *Purpose:* demonstrate IV-based causal estimation of treatment effects on time-to-event outcomes
+- *Key elements:* a treatment/exposure of interest, baseline measured covariates, and at least one candidate instrument (an exogenous source of treatment variation)
 
-```r
-# fit <- coxiv_tsrif(
-#   formula     = Surv(time, event) ~ A + X1 + X2,
-#   trtformula  = A ~ Z + X1 + X2,
-#   data        = dat,
-#   tvareff     = FALSE
-# )
-```
+**vascular**: Vascular reintervention surgery during follow-up after EVAR procedure 
+- *Type:* longitudinal cohort / registry-style survival data (start–stop or visit-based format)
+- *Purpose:* demonstrate IV-based causal estimation of treatment effects on time-to-event outcomes
+- *Key elements:* a treatment/exposure of interest, baseline measured covariates, and at least one candidate instrument (an exogenous source of treatment variation)
 
-### Sequential 2SRI Cox (trial emulation)
-
-```r
-# em <- seqem(
-#   data  = long_data,
-#   id    = "id",
-#   tvtrt = "A"
-#   # ... additional longitudinal settings ...
-# )
-#
-# fit <- coxiv_seq(
-#   formula    = Surv(start, stop, event) ~ A + X1 + X2,
-#   trtformula = A ~ Z + X1 + X2,
-#   data       = em,
-#   id         = "id",
-#   tvtrt      = "A",
-#   iv         = "Z"
-# )
-```
-
----
-
-## Included example data
-
-The package includes a **small, analysis-ready example dataset** intended for demonstrations and unit tests.
-
-- **Type:** longitudinal cohort / registry-style survival data (start–stop or visit-based format)
-- **Purpose:** demonstrate IV-based causal estimation of treatment effects on time-to-event outcomes
-- **Key elements:** a treatment/exposure of interest, baseline measured covariates, and at least one candidate instrument (an exogenous source of treatment variation)
-
-> **Edit the study description below to match your dataset (2–4 sentences):**  
-> “This dataset represents a de-identified cohort of patients followed for a clinical event over time. Treatment initiation may occur during follow-up, and an instrument provides quasi-random variation in treatment assignment. The dataset is included to illustrate the workflow and reproduce package examples; it is not intended for clinical inference.”
-
-To see what datasets are available:
+To access the data:
 
 ```r
-data(package = "{PACKAGE}")
+data(VitD, package = "surviv")
+data(vascular, package = "surviv")
 ```
-
-Load the example dataset (replace `example_data` with your dataset name):
-
-```r
-# data(example_data, package = "{PACKAGE}")
-```
-
----
-
-## Assumptions (brief)
-
-All IV methods rely on standard IV assumptions:
-
-- **Relevance:** the instrument predicts treatment
-- **Exclusion restriction:** the instrument affects the outcome only through treatment
-- **Independence:** the instrument is independent of unmeasured confounders (possibly conditional on measured covariates)
-
-Each estimator also has method-specific modeling assumptions (e.g., Cox PH structure, frailty specification, or sequential emulation/weighting assumptions).
 
 ---
 
@@ -163,7 +111,7 @@ Each estimator also has method-specific modeling assumptions (e.g., Cox PH struc
 
 If you use this package in academic work, please cite:
 
-- `{Your manuscript / preprint / software paper citation here}`
+- ``
 
 ---
 
@@ -176,4 +124,3 @@ For bug reports, please include a minimal reproducible example and `sessionInfo(
 
 ## License
 
-{Specify license here (e.g., MIT, GPL-3). If you already have a LICENSE file, this can be brief.}
