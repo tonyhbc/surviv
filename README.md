@@ -43,7 +43,7 @@ An IV estimator for the Cox proportional hazards model based on self-orthogonali
 
 ### 2) Two-stage residual inclusion with frailty (TSRI-F)
 
-A **two-stage residual inclusion (2SRI)** approach for Cox models that incorporates an **individual frailty term** to absorb unobserved heterogeneity and estimation noise ([Martínez-Camblor et al. 2019](https://link.springer.com/article/10.1007/s10742-014-0117-x](https://academic.oup.com/biostatistics/article-abstract/20/1/80/4753665?redirectedFrom=fulltext&login=false))).
+A **two-stage residual inclusion (2SRI)** approach for Cox models that incorporates an **individual frailty term** to absorb unobserved heterogeneity and estimation noise ([Martínez-Camblor et al. 2019](https://academic.oup.com/biostatistics/article-abstract/20/1/80/4753665?redirectedFrom=fulltext&login=false)).
 
 - **Estimate:** conditional log hazard ratio
 - **Use when:** one has a baseline IV, a numeric/binary baseline treatment, and assume a __constant treatment effect__ over time.
