@@ -1,6 +1,6 @@
 
 
-# **surviv**: Instrumental variable methods for survival analysis
+# `surviv`: Instrumental variable methods for survival analysis
 
 Causal inference for **time-to-event outcomes** under **unmeasured confounding**, with a focus on IV-based Cox model estimators and longitudinal/sequential trial emulation.
 
@@ -18,7 +18,7 @@ remotes::install_github("{OWNER}/{REPO}")
 Load the package:
 
 ```r
-library({PACKAGE})  # replace with the actual package name
+library({surviv})  # replace with the actual package name
 ```
 
 > **Tip:** Replace `{OWNER}`, `{REPO}`, and `{PACKAGE}` throughout this README.
