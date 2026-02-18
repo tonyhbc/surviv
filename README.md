@@ -2,34 +2,27 @@
 
 # `surviv`: Instrumental variable methods for survival analysis
 
-Causal inference for **time-to-event outcomes** under **unmeasured confounding**, with a focus on IV-based Cox model estimators and longitudinal/sequential trial emulation.
+Instrumental variable methods for **time-to-event outcomes** under **unmeasured confounding**, with a focus on IV-based Cox model estimators under various real-world data setting.
 
 ---
 
 ## Installation
 
-Install the development version from GitHub:
+Install the development version from GitHub and load the package:
 
 ```r
 install.packages("remotes")
-remotes::install_github("{OWNER}/{REPO}")
+remotes::install_github("tonyhbc/surviv")
+library({surviv})
 ```
-
-Load the package:
-
-```r
-library({surviv})  # replace with the actual package name
-```
-
-> **Tip:** Replace `{OWNER}`, `{REPO}`, and `{PACKAGE}` throughout this README.
 
 ---
 
-## Why this package?
+## Analytic goal at a glance
 
-In many observational survival studies, treatment is confounded by factors that are not fully measured. **Instrumental variables (IVs)** can enable causal estimation when a valid instrument exists (e.g., provider preference, site-level variation, policy/eligibility thresholds), provided standard IV assumptions hold.
+In many survival follow-up studies, treatment is confounded by factors that are not fully measured. **Instrumental variables (IVs)** can enable causal estimation and mitigate bias due to unmeasured confounding when a valid instrument exists (e.g., randomization, provider preference, site-level variation, policy/eligibility enactment), provided standard IV assumptions hold.
 
-This package collects several **IV estimators for Cox-type survival models**, spanning classic single-shot IV estimators and modern longitudinal/sequential designs.
+This package collects several **IV estimators for Cox-type survival models**, spanning classic baseline IV estimators and time-varying designs for flexible real-world analytics.
 
 ---
 
