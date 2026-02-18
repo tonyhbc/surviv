@@ -89,15 +89,16 @@ A **sequential target trial emulation** (STE) approach for treatment initiation 
 The package includes two example datasets: `VitD` and `vascular` for demonstration purpose.
 
 **VitD**: VitD intake and mortality study.
-- *Type:* longitudinal cohort / registry-style survival data (start–stop or visit-based format)
-- *Purpose:* demonstrate IV-based causal estimation of treatment effects on time-to-event outcomes
-- *Key elements:* a treatment/exposure of interest, baseline measured covariates, and at least one candidate instrument (an exogenous source of treatment variation)
+- *Type:* a classical survival data with baseline covariates, IV, and right-censored survival time. Mirrored from the [`ivtools`](https://cran.r-project.org/web/packages/ivtools/) package.
+- *Purpose:* for demonstration of estimators `coxiv_omom()` and `coxiv_tsrif()`.
+- *Key elements:* the treatment is vitamin D intake and the IV is mutation status in Flaggrin gene.
 
 **vascular**: Vascular reintervention surgery during follow-up after EVAR procedure 
-- *Type:* longitudinal cohort / registry-style survival data (start–stop or visit-based format)
-- *Purpose:* demonstrate IV-based causal estimation of treatment effects on time-to-event outcomes
-- *Key elements:* a treatment/exposure of interest, baseline measured covariates, and at least one candidate instrument (an exogenous source of treatment variation)
-
+- *Type:* longitudinal cohort / registry-style survival data (start–stop format) with a time-dependent treatment and baseline IV.
+- *Purpose:* for demonstration of estimators `seqem()`, `seqcox()`, and `coxiv_seq()`.
+- *Key elements:* the treatment is the time-dependent vascular reintervention surgery that could take place any time during follow-up, including time zero, and assumed to remain treated once initiated. The IV is the center-level
+    prevalence of reintervention surgery. The study cohort is a group of abdominal aortic aneurysm patients who just went through a first-line EVAR procedure (time zero).
+  
 To access the data:
 
 ```r
