@@ -13,7 +13,7 @@ Install the development version from GitHub and load the package:
 ```r
 install.packages("remotes")
 remotes::install_github("tonyhbc/surviv")
-library({surviv})
+library(surviv)
 ```
 
 ---
