@@ -1,79 +1,108 @@
 #' Sequential trial emulation for time-dependent treatment data
 #'
-#' @description
-#' Construct a stacked "sequence of trials" dataset from longitudinal
-#' survival data in counting-process form, following the sequential
-#' trials emulation framework of Gran et al. and Keogh et al.
+#' Constructs a stacked sequence of emulated trials from
+#' longitudinal survival data in start-stop form, following the
+#' sequential trials framework of Gran et al. and Keogh et al.
 #'
-#' The function:
+#' Trial start times are determined only by the earliest observed cohort
+#' entry time and by times at which at least one individual newly initiates
+#' treatment (0 -> 1). Changes in time-varying covariates listed in
+#' `covs` do **not** themselves create new trial start times. However,
+#' `seqem()` still carries those covariates forward correctly into each
+#' emulated trial by creating trial-specific baseline versions with suffix
+#' `.base`.
+#'
+#' When `coarsen != "none"`, the observed timeline is discretized/coarsened onto a
+#' grid of time width `cbin_width`. This coarsening is applied to **all** row
+#' start times, not only to treatment changes, so that updates in
+#' time-varying covariates are also mapped onto the coarsened scale.
+#' With `coarsen = "floor"`, updates are mapped down to the beginning of
+#' the containing interval; with `coarsen = "ceiling"`, they are mapped up
+#' to the end of the containing interval. After coarsening, emulated trial
+#' start times remain tied only to treatment initiation times on the
+#' coarsened scale.
+#'
+#' The function algorithmic workflow:
 #' \enumerate{
 #'   \item Identifies trial start times: the earliest cohort start time plus
-#'         all times at which any individual initiates treatment (0 -> 1).
+#'         all times at which any individual initiates treatment (`tvtrt =` 0 -> 1).
 #'   \item Augments each individual's trajectory by splitting intervals at
 #'         these trial start times so that each at-risk subject has an
 #'         explicit row starting at each trial time.
 #'   \item For each trial, includes individuals who are under observation at
 #'         the trial start and have not yet started treatment, and constructs
 #'         trial-specific baseline versions of treatment and covariates
-#'         (suffix `.base`), new follow-up times `start.new`, `stop.new`, and
-#'         row index `rownum` within `(id, trial)`.
+#'         (with suffix `.base`), new follow-up times `start.new`, `stop.new`, `event`.
 #'   \item Implements artificial censoring by restricting to rows where the
 #'         current treatment equals the baseline treatment in that trial.
 #' }
 #'
-#' @param data A `data.frame` in counting-process form with potentially
-#'   multiple rows per individual.
-#' @param start Name of the start time variable.
-#' @param stop Name of the stop time variable.
-#' @param event Name of the event indicator (0/1).
-#' @param tvtrt Name of the time-varying treatment variable (binary 0/1).
-#' @param id Name of the individual identifier.
-#' @param covs Optional character vector of covariate names in `data` for which
-#'   trial-specific baseline versions should be created. For each `v` in
-#'   `covs`, `seqem()` creates `v.base` representing the value of `v` at
-#'   the start of each emulated trial for each individual. A baseline version
-#'   of `tvtrt` is always created as `tvtrt.base`.
-#' @param coarsen Optional character to coarsen the time scale.
+#' @param data a `data.frame` in start-stop long format with potentially
+#'   multiple rows per individual. Typically a dataset produced by
+#'   [tmerge][survival::tmerge()].
+#' @param start a string name of the interval start time variable.
+#' @param stop a string name of the stop time variable.
+#' @param event a string name of the event indicator (1: event).
+#' @param tvtrt a string name of the time-varying **treatment** variable. Currently this
+#'   must be binary and monotone in the sense assumed by the sequential
+#'   trials framework (remain 1 once become 1). A trial-specific baseline
+#'   version of `tvtrt` is always created as `tvtrt.base`.
+#' @param id a string name of the unique individual identifier.
+#' @param covs optional. a string vector of covariate names in `data` for
+#'   which trial-specific baseline versions should be created. Both
+#'   *time-constant* and *time-varying* covariates are supported. For each `X`
+#'   in `covs`, `seqem()` creates `X.base`, representing the value of `X`
+#'   at the start of each emulated trial for each individual.
+#' @param coarsen one of `"none"`, `"floor"`, or `"ceiling"`.
+#'   `"none"` leaves the original timeline unchanged. `"floor"` and
+#'   `"ceiling"` discretize row start times to the coarsening grid and thus
+#'   affect both treatment and time-varying covariate histories.
+#' @param cbin_width a positive numeric bin width used when
+#'   `coarsen = "floor"` or `"ceiling"`.
 #'
-#' @return An object of class `"seqem"` with components:
+#' @return A `seqem` object with components:
 #' \itemize{
-#'   \item `data_seqorig` – stacked emulated trials **before** artificial
+#'   \item `data_seqorig` : stacked emulated trials **before** artificial
 #'         censoring, with columns:
 #'         `id`, `trial`, `trial_time`, `rownum`, `visit`,
-#'         original `start`, `stop`, `event`, `tvtrt`, covariates,
-#'         `start.new`, `stop.new`, `tvtrt.base`, and `{cov}.base` for
-#'         covariates in `covs`.
-#'   \item `data_seqem` – stacked emulated trials **after** artificial
-#'         censoring, obtained by restricting to rows with
-#'         `tvtrt == tvtrt.base`. This is the dataset typically used for
-#'         sequential Cox / MSM fitting with IPACW.
-#'   \item `summary` – a character string describing the STE object (used by
-#'         `print.seqem()`).
-#'   \item `trial_summary` – a per-trial summary `data.frame` with one row
+#'         original `start`, `stop`, `event`, `tvtrt`, covariates, and
+#'         triap-specific follow-up intervals `start.new`, `stop.new`,
+#'         `event`, trial-specific baseline treatment and covariates
+#'         `{tvtrt}.base`, `{covs}.base` for covariates in `covs`.
+#'   \item `data_seqem` : stacked emulated trials **after** artificial
+#'         censoring, obtained by restricting to rows by forcing
+#'         `{tvtrt} == {tvtrt}.base`. This is the dataset typically used for
+#'         downstream `seqcox()` or `coxiv_seq()` with sequential trials
+#'         emulation framework.
+#'   \item `summary` : a character string describing the `seqem` object,
+#'         used by `print.seqem()`.
+#'   \item `trial_summary` : a per-trial summary `data.frame` with one row
 #'         per emulated trial and columns:
 #'         `trial` (trial index), `t0` (trial start time),
 #'         `n` (unique individuals), `rows` (person-time rows),
-#'         `treated` (unique baseline-treated individuals),
-#'         and `events` (terminal events) in that trial.
+#'         `treated` (unique baseline-treated individuals), and `events`
+#'         (terminal events) in that trial.
 #' }
 #'
-#' Attributes on `data_seqorig` and `data_seqem`:
-#' \itemize{
-#'   \item `"trial_times"` – vector of trial start times.
-#'   \item `"id_var"`, `"start_var"`, `"stop_var"`, `"event_var"`,
-#'         `"tvtrt_var"` – names of the corresponding variables.
+#' @examples
+#' if (requireNamespace("survival", quietly = TRUE)) {
+#'   data("heart", package = "survival")
+#'
+#'   fit_seqem <- seqem(data = heart, start = "start", stop = "stop",
+#'     event = "event", tvtrt = "transplant", id = "id",
+#'     covs = c("age", "surgery"), coarsen = "floor", cbin_width = 7)
+#'
+#'   print(fit_seqem)
 #' }
+#'
+#' @references
+#' 1. Gran JM, Roysland K, Wolbers M, Didelez V, Sterne JA, Ledergerber B, Furrer H, von Wyl V, Aalen OO. A sequential Cox approach for estimating the causal effect of treatment in the presence of time-dependent confounding applied to data from the Swiss HIV Cohort Study. *Statistics in Medicine*. 2010 Nov 20;29(26):2757-68.
+#' 2. Keogh RH, Gran JM, Seaman SR, Davies G, Vansteelandt S. Causal inference in survival analysis using longitudinal observational data: Sequential trials and marginal structural models. *Statistics in Medicine*. 2023 Jun 15;42(13):2191-2225.
 #'
 #' @export
-seqem <- function(data,
-                  start,
-                  stop,
-                  event,
-                  tvtrt,
-                  id,
-                  covs = NULL,
-                  coarsen = c("none", "floor", "ceiling"),
-                  cbin_width = NULL) {
+
+seqem <- function(data, start, stop, event, tvtrt, id, covs = NULL,
+                  coarsen = c("none", "floor", "ceiling"), cbin_width = NULL) {
 
   coarsen <- match.arg(coarsen)
 
@@ -234,7 +263,7 @@ seqem <- function(data,
   ## ---- 1. Trial start times (baseline + treatment initiations) ----------
 
   prev_trt <- ave(df[[tvtrt]], df[[id]],
-                  FUN = function(z) c(0, head(z, -1L)))
+                  FUN = function(z) c(0, utils::head(z, -1L)))
   switch_rows    <- (df[[tvtrt]] == 1L) & (prev_trt == 0L)
   trt_init_times <- df[[start]][switch_rows]
 
@@ -359,7 +388,10 @@ seqem <- function(data,
                            interaction(trial_df[[id]], trial_df$trial, drop = TRUE),
                            FUN = seq_along)
 
-    # Baseline versions of tvtrt and covariates at trial start
+    # Baseline versions of tvtrt and covariates at trial start.
+    # Because trajectories were already split at every trial start time,
+    # time-varying covariates in `covs` are re-evaluated dynamically for
+    # each emulated trial and become `{cov}.base` variables.
     first_rows <- !duplicated(trial_df[[id]])
     for (v in covs_for_baseline) {
       if (!v %in% names(trial_df)) {
@@ -484,7 +516,7 @@ seqem <- function(data,
     }
   }
 
-  summary_text <- .seqem_summary_text(dat_seq)
+  summary_text <- .seqem_summary_text(dat_seq, trial_summary = trial_summary)
 
   out <- list(
     data_seqorig   = dat_seq_orig,
@@ -498,139 +530,139 @@ seqem <- function(data,
 
 
 # Internal helper: build multi-line summary string for a seqem object
-# Internal helper: build multi-line summary string for a seqem object
-.seqem_summary_text <- function(dat) {
+.seqem_summary_text <- function(dat, trial_summary = NULL, max_show = 6L) {
   trial_times <- attr(dat, "trial_times")
   id_var      <- attr(dat, "id_var")
-  start_var   <- attr(dat, "start_var")
-  stop_var    <- attr(dat, "stop_var")
-  event_var   <- attr(dat, "event_var")
   tvtrt_var   <- attr(dat, "tvtrt_var")
+  event_var   <- attr(dat, "event_var")
   coarsen     <- attr(dat, "coarsen")
   cbin_width  <- attr(dat, "cbin_width")
 
-  n_rows <- nrow(dat)
-  n_ids  <- if (!is.null(id_var) && id_var %in% names(dat)) {
-    length(unique(dat[[id_var]]))
-  } else NA_integer_
-
   if (!("trial" %in% names(dat))) {
     return("Object lacks 'trial' variable; not a valid STE dataset.\n")
+  }
+
+  n_ids <- if (!is.null(id_var) && id_var %in% names(dat)) {
+    length(unique(dat[[id_var]]))
+  } else {
+    NA_integer_
   }
 
   trials_present   <- sort(unique(dat[["trial"]]))
   n_trials_present <- length(trials_present)
   n_trials_total   <- if (!is.null(trial_times)) length(trial_times) else n_trials_present
 
-  buf <- character()
-
-  buf <- c(buf,
-           "Sequential trial emulation data (seqem)\n",
-           "--------------------------------------------------\n")
-  buf <- c(buf, sprintf("Rows in data_seqem : %d\n", n_rows))
-  if (!is.na(n_ids)) {
-    buf <- c(buf, sprintf("Ids in data_seqem  : %d\n", n_ids))
-  }
-  line_trials <- sprintf("Trials (present)   : %d", n_trials_present)
-  if (!is.null(trial_times)) {
-    line_trials <- paste0(
-      line_trials,
-      sprintf("  (%d trial start time%s in 'trial_times')",
-              n_trials_total,
-              if (n_trials_total == 1L) "" else "s")
-    )
-  }
-  buf <- c(buf, line_trials, "\n")
-
-  if (!is.null(coarsen)) {
-    if (coarsen == "none") {
-      buf <- c(buf, "Time coarsening      : none\n")
-    } else {
-      buf <- c(buf, sprintf("Time coarsening      : %s (bin width = %s)\n",
-                            coarsen, as.character(cbin_width)))
-    }
-  }
-
-  if (!is.null(id_var)) {
-    buf <- c(buf, "Core variables:\n")
-    buf <- c(buf, sprintf("  id    : %s\n", id_var))
-    buf <- c(buf, sprintf("  start : %s\n", start_var))
-    buf <- c(buf, sprintf("  stop  : %s\n", stop_var))
-    buf <- c(buf, sprintf("  event : %s\n", event_var))
-    buf <- c(buf, sprintf("  tvtrt : %s\n", tvtrt_var))
-    buf <- c(buf, "  trial : integer trial index (0-based)\n")
-
-    tv_base_name <- if (!is.null(tvtrt_var)) paste0(tvtrt_var, ".base") else NULL
-    if (!is.null(tv_base_name) && tv_base_name %in% names(dat)) {
-      buf <- c(buf,
-               sprintf("  Baseline treatment variable: %s\n", tv_base_name))
-    }
-    if (all(c("start.new", "stop.new") %in% names(dat))) {
-      buf <- c(buf, "  start.new, stop.new present.\n")
-    }
-  }
-
-  # Per-trial summary (top 10)
-  if (n_trials_present > 0L &&
-      !is.null(id_var) && !is.null(event_var) &&
-      id_var %in% names(dat) && event_var %in% names(dat)) {
-
-    buf <- c(buf, "\nPer-trial summary (present trials):\n")
-
-    ids_per_trial <- tapply(dat[[id_var]], dat[["trial"]],
-                            function(z) length(unique(z)))
-    rows_per_trial <- tapply(seq_len(nrow(dat)), dat[["trial"]], length)
-    events_per_trial <- tapply(dat[[event_var]], dat[["trial"]],
-                               function(z) sum(z, na.rm = TRUE))
-
-    # treated: unique ids with baseline treatment = 1 in each trial
-    tv_base_name <- if (!is.null(tvtrt_var)) paste0(tvtrt_var, ".base") else NULL
-    treated_raw <- NULL
-    if (!is.null(tv_base_name) && tv_base_name %in% names(dat)) {
-      treated_raw <- tapply(
-        dat[[id_var]][dat[[tv_base_name]] == 1],
-        dat[["trial"]][dat[[tv_base_name]] == 1],
-        function(z) length(unique(z))
+  if (is.null(trial_summary) || !is.data.frame(trial_summary) || nrow(trial_summary) == 0L) {
+    trial_summary <- NULL
+    if (!is.null(id_var) && !is.null(event_var) && id_var %in% names(dat) && event_var %in% names(dat)) {
+      ids_per_trial <- tapply(dat[[id_var]], dat[["trial"]], function(z) length(unique(z)))
+      events_per_trial <- tapply(dat[[event_var]], dat[["trial"]], function(z) sum(z, na.rm = TRUE))
+      tv_base_name <- if (!is.null(tvtrt_var)) paste0(tvtrt_var, ".base") else NULL
+      treated_raw <- NULL
+      if (!is.null(tv_base_name) && tv_base_name %in% names(dat)) {
+        treated_raw <- tapply(
+          dat[[id_var]][dat[[tv_base_name]] == 1],
+          dat[["trial"]][dat[[tv_base_name]] == 1],
+          function(z) length(unique(z))
+        )
+      }
+      align_vec <- function(v) v[match(trials_present, as.numeric(names(v)))]
+      ids_aligned    <- align_vec(ids_per_trial)
+      events_aligned <- align_vec(events_per_trial)
+      if (!is.null(treated_raw)) {
+        treated_aligned <- align_vec(treated_raw)
+        treated_aligned[is.na(treated_aligned)] <- 0L
+      } else {
+        treated_aligned <- rep(NA_integer_, length(trials_present))
+      }
+      t0s <- if (!is.null(trial_times)) {
+        trial_times[pmin(trials_present + 1L, length(trial_times))]
+      } else {
+        rep(NA_real_, length(trials_present))
+      }
+      trial_summary <- data.frame(
+        trial = trials_present,
+        t0 = t0s,
+        n = as.numeric(ids_aligned),
+        treated = as.numeric(treated_aligned),
+        events = as.numeric(events_aligned)
       )
     }
+  }
 
-    align_vec <- function(v) v[match(trials_present, as.numeric(names(v)))]
+  fmt_num <- function(x) {
+    format(x, digits = 6, trim = TRUE, scientific = FALSE)
+  }
 
-    ids_per_trial    <- align_vec(ids_per_trial)
-    rows_per_trial   <- align_vec(rows_per_trial)
-    events_per_trial <- align_vec(events_per_trial)
+  fmt_trial_times <- function(x) {
+    if (is.null(x) || !length(x)) return("NA")
+    paste(fmt_num(x), collapse = ", ")
+  }
 
-    if (!is.null(treated_raw)) {
-      treated_per_trial <- align_vec(treated_raw)
-      treated_per_trial[is.na(treated_per_trial)] <- 0L
-    } else {
-      treated_per_trial <- rep(NA_integer_, n_trials_present)
-    }
+  title <- "Sequential trial emulation data object (seqem)"
+  soft_div <- strrep("~",  nchar(title))
+  hard_div <- strrep("-",  nchar(title))
 
-    t0s <- if (!is.null(trial_times)) {
-      trial_times[pmin(trials_present + 1L, length(trial_times))]
-    } else {
-      rep(NA_real_, n_trials_present)
-    }
+  buf <- character()
+  buf <- c(buf, title, "\n")
+  buf <- c(buf, strrep("=", nchar(title)), "\n")
 
-    max_show <- min(n_trials_present, 10L)
-    for (j in seq_len(max_show)) {
-      tr     <- trials_present[j]
-      t0_str <- if (is.na(t0s[j])) "NA" else format(t0s[j], digits = 6, trim = TRUE)
+  if (!is.na(n_ids)) {
+    buf <- c(buf, sprintf("Sample size : %d\n", n_ids))
+  }
+
+  trial_line <- sprintf("Trials emulated : %d", n_trials_present)
+  if (!is.null(trial_times)) {
+    trial_line <- paste0(
+      trial_line,
+      sprintf("  (%d start times [ trial_time ])",
+              n_trials_total)
+    )
+  }
+  buf <- c(buf, trial_line, "\n")
+
+  if (is.null(coarsen) || identical(coarsen, "none")) {
+    buf <- c(buf, "Coarsen method : none\n")
+  } else {
+    buf <- c(buf, sprintf("Coarsen method : %s (per %s time units)\n",
+                          coarsen, format(cbin_width, trim = TRUE, scientific = FALSE)))
+  }
+
+  buf <- c(buf, soft_div, "\n")
+  buf <- c(buf, "Core variables:\n")
+  if (!is.null(tvtrt_var)) {
+    buf <- c(buf, sprintf("  Treatment (original) : [ %s ]\n", tvtrt_var))
+    buf <- c(buf, sprintf("  Trial treatment : [ %s\n", paste0(tvtrt_var, ".base ]")))
+  }
+  buf <- c(buf, "  Trial : integer index [ trial ] (0-based)\n")
+  if (all(c("start.new", "stop.new") %in% names(dat))) {
+    buf <- c(buf, "  Trial intervals : [ start.new ], [ stop.new ], [ event ]\n")
+  }
+  buf <- c(buf, soft_div, "\n")
+
+  if (!is.null(trial_summary) && is.data.frame(trial_summary) && nrow(trial_summary) > 0L) {
+    buf <- c(buf, "Per-trial summary (present trials):\n")
+    show_n <- min(nrow(trial_summary), max_show)
+    for (j in seq_len(show_n)) {
+      t0_str <- if (is.na(trial_summary$t0[j])) "NA" else fmt_num(trial_summary$t0[j])
       buf <- c(buf,
-               sprintf("  trial %d (t0 = %s): rows = %d, ids = %d, treated = %d, events = %d\n",
-                       tr, t0_str,
-                       rows_per_trial[j], ids_per_trial[j],
-                       treated_per_trial[j], events_per_trial[j]))
+               sprintf("  - trial %d (t0 = %s) : ids = %d, treated = %d, events = %d\n",
+                       trial_summary$trial[j],
+                       t0_str,
+                       trial_summary$n[j],
+                       trial_summary$treated[j],
+                       trial_summary$events[j]))
     }
-    if (n_trials_present > 10L) {
-      extra <- n_trials_present - 10L
+    if (nrow(trial_summary) > show_n) {
+      extra <- nrow(trial_summary) - show_n
       buf <- c(buf,
-               sprintf("  ... (%d additional trial%s not shown)\n",
+               sprintf("  ...... (%d additional trial%s not shown)\n",
                        extra, if (extra == 1L) "" else "s"))
     }
   }
 
+  buf <- c(buf, hard_div, "\n")
+  buf <- c(buf, "A `seqem` object\n")
+
   paste0(buf, collapse = "")
 }
-

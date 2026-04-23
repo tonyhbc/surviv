@@ -1,6 +1,6 @@
 #' Orthogonality method-of-moment IV estimation of Cox model
 #'
-#' Estimate marginal causal treatment effect (in terms of log-hazard ratio) in Cox model setting subject to unmeasured confounding \eqn{U} using instrumental variable based on the IV **O**rthogonality **M**ethod-**o**f-**M**oment estimator in \href{https://link.springer.com/article/10.1007/s10742-014-0117-x}{MacKenzie et al. 2014}.
+#' Estimate marginal causal treatment effect (in terms of log-hazard ratio) in Cox model setting subject to unmeasured confounding \eqn{U} using instrumental variable based on the IV **O**rthogonality **M**ethod-**o**f-**M**oment estimator in MacKenzie et al. (2014).
 #'
 #'
 #' A causal Cox counterfactual survival model for survival time \eqn{T} with additive unmeasured confounding is assumed for treatment \eqn{A}, observed confounder \eqn{X}, and unmeasured confounder \eqn{U}.
@@ -9,11 +9,10 @@
 #' The estimates are obtained as the numerical solution to zero-crossing of estimating equation:
 #' \deqn{\psi(\beta) \approx \sum^n_{i=1}\int^\tau_0 \left\{ Z_i-\frac{\sum^n_{j=1} Z_j D_j(s)\exp\{\beta_a A_j+\beta'X\}}{\sum^n_{j=1}D_j(s)\exp\{\beta_a A_j+\beta'X\}}dN_i(s) \right\} = 0 }
 #' which is identical to the partial Cox score function for instrument \eqn{Z}. \eqn{D(t)} is the event indicator at time t and \eqn{N(t)} is a counting process for survival.
-#' Huber-White sandwich estimator is used to obtain variance for \eqn{\hat{\beta}}:
-#' \deqn{\text{Cov}(g(\beta)) = \sum^n_{i=1}\int^\tau_0\left\{Z_i-\frac{\sum^n_{j=1} Z_j D_j(s)\exp\{\beta_a A_j+\beta'X\}}{\sum^n_{j=1}D_j(s)\exp\{\beta_a A_j+\beta'X\}}dN_i(s) \right\}dN_i(s)}
+#' Huber-White sandwich estimator is used to obtain variance for \eqn{\hat{\beta}}.
 #' Suggestive diagnostic test for weak IV was provided by fitting a pseudo-first stage treatment linear model (since OMOM IV is an estimating equation based IV approach, not two-stage based)
 #' regressing treatment `trt` on IV `iv` and confounders extracted from all predictors from `formula` input except for `trt`.
-#' A nested \link[stats]{anova} F-test was performed to compare fitted treatment models with and without `iv` as predictor as suggested in \href{https://econpapers.repec.org/article/ecmemetrp/v_3a65_3ay_3a1997_3ai_3a3_3ap_3a557-586.htm}{Staiger and Stock, 1997} and \href{https://www.cambridge.org/core/books/abs/identification-and-inference-for-econometric-models/testing-for-weak-instruments-in-linear-iv-regression/8AD94FF2EFD214D05D75EE35015021E4}{Stock and Yogo, 1997}.
+#' A nested \link[stats]{anova} F-test was performed to compare fitted treatment models with and without `iv` as predictor.
 #' A popular rule of thumb of indication for weak IV in econometric literature is when F-statistics is less than 10 from comparing IV-exclusion model.
 #'
 #'
@@ -22,34 +21,33 @@
 #' @param iv a string indicates the name of the instrumental variable. Only one time-variant __binary__ or __continuous__ instrumental variable is supported. IV cannot be multi-categorical.
 #' @param data a \link[base]{data.frame} object of input data containing all variables specified in `formula`, including observed confounders.
 #'
-#' @return Returns `coxivomom` and `surviv` object for OMOM IV estimation of Cox model with following components:
+#' @return A `coxivomom` object for OMOM IV estimation of a Cox model with the following components:
 #' * `call`: the match call of the OMOM IV model.
-#' * `input`: collected input of the OMOM IV model.
+#' * `coef` : a `data.frame` of estimated log-hazard ratios and inference for all predictors in the outcome Cox model, with columns `logHR`, `se`, `Z`, and `p.val`.
+#' * `conf_int` : a `data.frame` of 95% confidence interval(s) for the estimated log hazard ratios.
+#' * `input`: the collected input of the OMOM IV model.
 #' * `formula`: the outcome regression formula for Cox model
 #' * `n`: the effective sample size used for model estimation after missingness removal.
 #' * `events`: the effective number of events of survival outcome after missingness removal.
-#' * `est_coef` : estimated log-hazard ratios, standard errors, and p-values.
-#' * `vcov_mat` : estimated covariance matrix of log-HRs.
-#' * `iv_diag`: list of IV diagnosis for weak IV. Include F-statistics and `anova` fit of nested treatment models comparison.
+#' * `vcov_mat` : estimated covariance matrix of log hazard ratios.
+#' * `iv_diag`: a list of IV diagnosis for weak IV. Include F-statistics and `anova` fit of nested treatment models comparison.
 #' * `surv_curve`: a \link[survival]{survfit} object for fitted survival curve using complete data.
-#'
-#' @docType package
 #'
 #' @import MASS
 #'
-#' @name coxiv_omom
-#'
 #' @examples
-#' surv_data = simdat_coxiv(n = 1000, 0.5)
-#' coxiv_omom(Surv(time, case) ~ trt + x1, trt = "trt",
-#'                            iv = "IV", data = surv_data)
+#' data("VitD", package = "surviv")
+#' fit_omom <- coxiv_omom(survival::Surv(time, death) ~ vitd + age,
+#'                         trt = "vitd", iv = "filaggrin", data = VitD)
+#' fit_omom$coef
+#' fit_omom$conf_int
 #'
 #' @references
-#' MacKenzie, T.A., Tosteson, T.D., Morden, N.E. et al. Using instrumental variables to estimate a Cox’s proportional hazards regression subject to additive confounding. *Health Serv Outcomes Res Method* 14, 54–68 (2014). \url{https://doi.org/10.1007/s10742-014-0117-x}
+#' MacKenzie, T.A., Tosteson, T.D., Morden, N.E. et al. Using instrumental variables to estimate a Cox proportional hazards regression subject to additive confounding. *Health Serv Outcomes Res Method* 14, 54-68 (2014).
 #'
 #' @export
 
-coxiv_omom = function(formula, trt, iv, data) {
+coxiv_omom <- function(formula, trt, iv, data) {
 
   # Save input arguments
   call <- match.call()
@@ -265,17 +263,17 @@ coxiv_omom = function(formula, trt, iv, data) {
 
   # Output results
   result_mat <- data.frame(
-    Estimate = beta_hat,
-    `Std Error` = se,
-    `Z value` = beta_hat / se,
-    Pval = 2 * (1 - pnorm(abs(beta_hat / se)))
+    logHR = beta_hat,
+    se = se,
+    Z = beta_hat / se,
+    p.val = 2 * pnorm(abs(beta_hat / se), lower.tail = FALSE),
+    row.names = c(trt, colnames(cov_matrix)),
+    check.names = FALSE
   )
-  colnames(result_mat)[4] = "P(>|z|)"
-  rownames(result_mat) <- c(trt, colnames(cov_matrix))
 
   # 95% Confidence Interval for treatment effect
-  upper <- result_mat$Estimate + qnorm(0.975) * result_mat$Std.Error
-  lower <- result_mat$Estimate - qnorm(0.975) * result_mat$Std.Error
+  upper <- result_mat$logHR + qnorm(0.975) * result_mat$se
+  lower <- result_mat$logHR - qnorm(0.975) * result_mat$se
   conf_int <- data.frame(lower, upper)
   rownames(conf_int) <- rownames(result_mat)
   names(conf_int) = c("2.5%", "97.5%")
@@ -295,7 +293,7 @@ coxiv_omom = function(formula, trt, iv, data) {
     formula = formula,
     n = nrow(complete_data),
     events = sum(eventind),
-    est_coef = round(result_mat, 12),
+    coef = result_mat,
     vcov_mat = Sandwich,
     conf_int = conf_int,
     iv_diag = iv_diag,
@@ -303,7 +301,7 @@ coxiv_omom = function(formula, trt, iv, data) {
   )
 
   # Define classes
-  class(result) <- c("coxivomom", "survivmod")
+  class(result) <- c("coxivomom")
 
   result
 }

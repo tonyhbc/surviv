@@ -1,7 +1,7 @@
 #' Two-stage residual inclusion-frailty (TSRI-F) instrumental variable analysis of Cox model
 #'
 #' Flexible instrumental analysis of Cox model in a novel **T**wo-**S**tage **R**esidual **I**nclusion with **F**railty (TSRI-F) framework when treatment \eqn{A} and mortality \eqn{D} are subject to unmeasured confounding.
-#' Allow estimation of time constant treatment effect (\href{https://doi.org/10.1093/biostatistics/kxx062}{Martinez-Camblor et al. 2019}) and time-varying treatment effect (\href{https://doi.org/10.1111/rssc.12341}{Martinez-Camblor et al. 2019})
+#' Allow estimation of time constant treatment effect (Martinez-Camblor et al. (2019)) and time-varying treatment effect (Martinez-Camblor et al. (2019))
 #' in terms of log hazard ratio (log-HR). A set of instrumental variables \eqn{Z} and covariates for adjustment \eqn{X} (i.e., measured confounders) are required to estimate treatment effects \eqn{\beta^{(1)}_a} and \eqn{\beta^{(2)}_a} before and after the pre-specified time `tchange`.
 #'
 #' This function performs two-stage residual inclusion IV analysis of the Cox model with individual frailty
@@ -10,20 +10,19 @@
 #' TSRI-F posits a first-stage linear model that generates the treatment: \deqn{A = \gamma_0+ \gamma_1Z+\gamma_2U+\gamma'X+\epsilon}
 #' and a second-stage outcome model follows Cox proportional hazards form: \deqn{\lambda(t|X,U)=\lambda_0(t)\exp\{\beta_aA+\beta_uU+\beta'X\}}
 #' where \eqn{\lambda_0} is the baseline hazard function. The first stage of TSRIF procedure for constant treatment effect estimates _control function_ \eqn{\widehat{R}} from residual of treatment model:
-#' \eqn{\widehat{R} = A - \hat{\gamma}_0 -\hat{\gamma}_1Z-\hat{\gamma}'X}, and fit a second-stage Cox model with user-specified individual frailty \eqn{\phi}:
-#' \eqn{\widehat{\lambda}(t|A,Z,\widehat{R},X) = \phi\cdot \widehat{\lambda}_0(t)\exp\{\hat{\beta_a}A+\hat{\beta}_r\widehat{R}+\hat{\beta}'X\}}.
+#' \eqn{\widehat{R} = A - \hat{\gamma}_0 -\hat{\gamma}_1Z-\hat{\gamma}'X}, and fit a second-stage Cox model with user-specified individual frailty \eqn{\phi} while adjusting for \eqn{\widehat{R}}.
 #'
 #' For more intricate case of time-varying effect, the first stage proceeds identically to compute \eqn{\widehat{R}^{(1)} = A - \hat{\gamma}_0 -\hat{\gamma}_1Z-\hat{\gamma}'X}.
 #' Second stage involves fitting two Cox models to estimate \eqn{\beta_a^{(1)} = \beta_a(t), t<} `tchange` and \eqn{\beta_a^{(2)} = \beta_a(t), t\ge} `tchange`.
-#' The first-period Cox model is fitted as \eqn{\widehat{\lambda}^1(t|A,Z,\widehat{R}^{(1)},X) = \phi^1 \cdot \widehat{\lambda}_0(t)\exp\{\hat{\beta}^{(1)}_aA+\hat{\beta}^{(1)}_r\widehat{R}^{(1)}+\hat{\beta}'X\}}.
-#' Then, update the control function \eqn{\widehat{R}^{(2)} = \widehat{R}^{(1)} + \hat{\beta}^{(1), -1}_r \hat{\phi_1}} for the second period, which are then included as a covariate in the second-period Cox model:
-#' \eqn{\widehat{\lambda}^2(t|A,Z,\widehat{R}^{(2)},X) = \phi^2\cdot \widehat{\lambda}_0(t)\exp\{\hat{\beta}_a^{(2)}A+\hat{\beta}^{(2)}_r\widehat{R}^{(2)}+\hat{\beta}'X\}}
+#' The first-period Cox model is fitted with frailty term \eqn{\hat{\phi_1}} and including \eqn{\widehat{R}^{(1)}} as a covariate.
+#' Then, update the control function \eqn{\widehat{R}^{(2)} = \widehat{R}^{(1)} + \hat{\beta}^{(1), -1}_r \hat{\phi_1}} for the second period, which are then included as a covariate in the second-period Cox model
+#' with a new frailty term.
 #'
 #' This approach estimates conditional treatment effect of `trt`. Coefficient estimates of covariates other than `trt` are also estimated and readily available, but these estimates are
 #' suggestive of their associational relations with survival outcome, and causal conclusions regarding these covariates with outcome should be cautious.
 #'
-#' @usage coxiv_tsrif(surv, cens, trt, iv, covs, data, tchange = NULL, tvareff = FALSE,
-#'             fdist = "gamma", bootvar = FALSE, B = 50)
+#' @usage coxiv_tsrif(surv, cens, trt, iv, covs, data, tchange = NULL,
+#'             tvareff = FALSE, fdist = "gamma", bootvar = FALSE, B = 50)
 #'
 #' @param surv a string indicating variable name of survival time \eqn{T}.
 #' @param cens a string indicating variable name of event indicator \eqn{D}: 1 for terminal event occurrence and 0 for right censor.
@@ -33,44 +32,43 @@
 #' @param data a \link[base]{data.frame} containing all variables needed.
 #' @param tchange a positive numeric value specifying the time point at which the treatment effect changes value.
 #' @param fdist the frailty distribution, default is `gamma`. Other options include `gaussian` or `t` distribution. Read more about frailty distribution specification at \link[survival]{frailty}.
-#' @param bootvar logical, if `TRUE`, bootstrap variance estimation is performed. Otherwise, analytical variance is provided from frailty Cox model.
+#' @param bootvar logical; if `TRUE`, bootstrap variance estimation is performed. Otherwise, analytical variance is provided from frailty Cox model.
 #' @param B number of bootstrap iterations if `bootvar` is `TRUE`.
-#' @param tvareff logical, by default `FALSE` and estimate a time-constant treatment effect model. If `TRUE`, a time-varying treatment effect model is applied.
+#' @param tvareff logical; by default `FALSE` and estimate a time-constant treatment effect model. If `TRUE`, a time-varying treatment effect model is applied.
 #'
-#' @return Returns `coxivtsrif` and `survivmod` object with following components:
-#' * `est_coef` : estimated log-HR of treatment effect. If `tvareff = TRUE`, returns both \eqn{\beta_a^1} and \eqn{\beta_a^2}.
-#' * `variances` : estiamted variance of treatment effect estimate. If `bootvar = TRUE`, bootstrap variance is computed.
-#' * `ctrl_func` : estimated control function \eqn{\widehat{R}}, or `data.frame` of \eqn{\widehat{R}^1} and \eqn{\widehat{R}^2} if `tvareff = TRUE`.
+#' @return A `coxivtsrif` object with following components:
+#' * `input` : collected input and derived model formulas used for the TSRI-F fit.
+#' * `trt_coef` : a `data.frame` of treatment-effect estimates with columns `logHR`, `se`, `Z`, and `p.val`. If `tvareff = TRUE`, it contains one row for each treatment-effect period.
+#' * `conf_int` : a `data.frame` for 95% confidence interval(s) for estimated treatment effect (s) from the choice of standard error estimator.
+#' * `ctrl_func` : the estimated control function \eqn{\widehat{R}}, or `data.frame` of \eqn{\widehat{R}^1} and \eqn{\widehat{R}^2} if `tvareff = TRUE`.
 #' * `trt_model` : a \link[stats]{lm} object fit of the first-stage treatment model.
 #' * `out_model` : a \link[survival]{coxph} object fit of the second-stage outcome Cox model. If `tvareff = TRUE`, Cox models for first period `out_model1` and second period `out_model2` are both returned.
 #' * `est_boot` :  a vector of length `B` of bootstrap estimates from each iteration. If `bootvar = FALSE`, returns `NULL`.
 #' * `data_long` :  a `data.frame` of data for model fit transformed into start-stop form for two-period Cox estimation, if `tvareff = TRUE`.
 #' * `surv_curve`: a \link[survival]{survfit} object for fitted survival curve using complete data.
-#' * `tvareff` :  logical; mirror the input argument `tvareff`.
+#' * `iv_diag` : a list of IV diagnostics for weak-IV assessment, including the nested ANOVA comparison and F-statistic.
 #'
 #' @examples
-#' # load example data
-#' data(surviv::PractData)
+#' data("VitD", package = "surviv")
 #'
-#' # estimate TSRI-F model with constant effect
-#' mod_fit = coxiv_tsrif(formula = Surv(V1, V2) ~ V3 + V4 + V5,
-#'                       trtformula = V3 ~ V4 + V5 + V6 + V7,
-#'                       tchange = NULL, data = PractData, trt = "V3", iv = c("V6", "V7"),
-#'                       fdist = "gaussian", bootvar = F, B = NULL, tvareff = F)
+#' fit_tsrif1 <- coxiv_tsrif(surv = "time", cens = "death", covs = c("age"),
+#'                           trt = "vitd", iv = "filaggrin", tchange = NULL,
+#'                           data = VitD, fdist = "gaussian", bootvar = FALSE,
+#'                           B = 20, tvareff = FALSE)
+#' fit_tsrif1$trt_coef
 #'
-#' # estimate TSRI-F model with time-varying effect and bootstrap variance
-#' mod_fit = coxiv_tsrif(formula = Surv(V1, V2) ~ V3 + V4 + V5,
-#'                       trtformula = V3 ~ V4 + V5 + V6 + V7,
-#'                       tchange = 2, data = PractData, trt = "V3", iv = c("V6", "V7"),
-#'                       fdist = "gamma", bootvar = T, B = 100, tvareff = T)
-#'
+#' fit_tsrif2 <- coxiv_tsrif(surv = "time", cens = "death", covs = c("age"),
+#'                           trt = "vitd", iv = "filaggrin", tchange = 5,
+#'                           data = VitD, fdist = "gaussian", bootvar = FALSE,
+#'                           B = 20, tvareff = TRUE)
+#' fit_tsrif2$trt_coef
 #'
 #' @import survival stats
 #'
 #' @references
-#' 1. Pablo Martínez-Camblor, Todd Mackenzie, Douglas O Staiger, Philip P Goodney, A James O’Malley, Adjusting for bias introduced by instrumental variable estimation in the Cox proportional hazards model, *Biostatistics*, Volume 20, Issue 1, January 2019, Pages 80–96,
+#' 1. Pablo Martinez-Camblor, Todd Mackenzie, Douglas O Staiger, Philip P Goodney, A James O'Malley, Adjusting for bias introduced by instrumental variable estimation in the Cox proportional hazards model, *Biostatistics*, Volume 20, Issue 1, January 2019, Pages 80-96,
 #'
-#' 2. Pablo Martínez-Camblor, Todd A. MacKenzie, Douglas O. Staiger, Phillip P. Goodney, A. James O’Malley, An Instrumental Variable Procedure for Estimating Cox Models with Non-Proportional Hazards in the Presence Of Unmeasured Confounding, *Journal of the Royal Statistical Society Series C: Applied Statistics*, Volume 68, Issue 4, August 2019, Pages 985–1005
+#' 2. Pablo Martinez-Camblor, Todd A. MacKenzie, Douglas O. Staiger, Phillip P. Goodney, A. James O'Malley, An Instrumental Variable Procedure for Estimating Cox Models with Non-Proportional Hazards in the Presence Of Unmeasured Confounding, *Journal of the Royal Statistical Society Series C: Applied Statistics*, Volume 68, Issue 4, August 2019, Pages 985-1005
 #' @export
 #'
 #'
@@ -82,7 +80,7 @@ coxiv_tsrif <- function(surv, cens, trt, iv, covs, data, tchange = NULL, tvareff
     stop("All arguments 'surv', 'covs', 'trt', 'iv', and 'data' must be provided.")
   }
   if (!is.character(surv) || length(surv) != 1) stop("'surv' must be a string for survival time variable")
-  if (!is.character(surv) || length(surv) != 1) stop("'cens' must be a string for censoring/mortality variable.")
+  if (!is.character(cens) || length(cens) != 1) stop("'cens' must be a string for censoring/mortality variable.")
   if (!is.data.frame(data)) stop("'data' must be a data frame.")
   if (!is.character(trt) || length(trt) != 1) stop("'trt' must be a string for treatment variable.")
   if (!is.null(covs) && !is.character(covs)) stop("'covs' must be a string or a vector of strings for confounder(s).")
@@ -96,7 +94,7 @@ coxiv_tsrif <- function(surv, cens, trt, iv, covs, data, tchange = NULL, tvareff
   if (!all(covs %in% colnames(data))) stop("Some confounders are not found in the data.")
   if (tvareff & (is.null(tchange) || tchange < 0 || !is.numeric(tchange))) stop("A valid change time 'tchange' is needed for time-varying treatment effect estimation.")
   if (!tvareff & !is.null(tchange)) message("~ The supplied 'tchange' value ignored since 'tvareff' is FALSE.")
-  if (!bootvar & !is.null(B)) message("~ Bootstrap iterations 'B' ignored since 'bootvar was set to FALSE.")
+  if (!bootvar & !is.null(B)) message("~ Bootstrap iterations 'B' ignored since 'bootvar' was set to FALSE.")
   if (bootvar && (is.null(B) || !is.numeric(B) || B <= 0)) stop("If bootvar = TRUE, you must specify a positive numeric value for B.")
 
   # Construct two-stage formulae
@@ -134,7 +132,7 @@ coxiv_tsrif <- function(surv, cens, trt, iv, covs, data, tchange = NULL, tvareff
   result$iv_diag <- iv_diag
 
   # Organize results
-  class(result) <- c("coxivtsrif", "survivmod")
+  class(result) <- c("coxivtsrif")
 
   return(result)
 }
@@ -218,12 +216,20 @@ est_tsrif_tfix <- function(formula, trtformula, data, trt, iv, fdist = "gamma",
   upper <- est + qnorm(0.975) * sqrt(variance)
   lower <- est - qnorm(0.975) * sqrt(variance)
   conf_int <- c(lower, upper)
-  names(conf_int) = c("2.5%", "97.5%")
+  names(conf_int) <- c("2.5%", "97.5%")
+
+  trt_coef <- data.frame(
+    logHR = unname(est),
+    se = sqrt(variance),
+    Z = unname(est) / sqrt(variance),
+    p.val = 2 * pnorm(abs(unname(est) / sqrt(variance)), lower.tail = FALSE),
+    row.names = trt,
+    check.names = FALSE
+  )
 
   # Return results
   return(list(
-    est_coef = est,
-    variance = variance,
+    trt_coef = trt_coef,
     conf_int = conf_int,
     trt_model = trt_model,
     ctrl_func = Resid,
@@ -374,13 +380,22 @@ est_tsrif_tvar <- function(formula, trtformula, data, trt, iv, fdist = "gamma",
   upper2 <- est[2] + qnorm(0.975) * sqrt(variance[2])
   lower2 <- est[2] - qnorm(0.975) * sqrt(variance[2])
   conf_int2 <- c(lower2, upper2)
-  conf_int <- matrix(c(conf_int1, conf_int2), nrow = 2, byrow = T)
-  colnames(conf_int) = c("2.5%", "97.5%")
+  conf_int <- matrix(c(conf_int1, conf_int2), nrow = 2, byrow = TRUE)
+  rownames(conf_int) <- names(est)
+  colnames(conf_int) <- c("2.5%", "97.5%")
+
+  trt_coef <- data.frame(
+    logHR = unname(est),
+    se = sqrt(variance),
+    Z = unname(est) / sqrt(variance),
+    p.val = 2 * pnorm(abs(unname(est) / sqrt(variance)), lower.tail = FALSE),
+    row.names = names(est),
+    check.names = FALSE
+  )
 
   # Return results
   return(list(
-    est_coef = est,
-    variance = variance,
+    trt_coef = trt_coef,
     conf_int = conf_int,
     trt_model = trt_model,
     ctrl_func = cntrlfunc,
